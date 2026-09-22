@@ -3,7 +3,8 @@
 Shared `BallEvent` contract for a cricket ball-by-ball feed.
 
 - **1 hop away:** `cricket-scoring` imports this package and interprets events.
-- **2 hops away:** `cricket-broadcast` must not import this package.
+- **2 hops away:** `cricket-broadcast`, `cricket-stats`, `cricket-highlights`, `cricket-live-gateway` must not import this package.
+- **3 hops away:** `cricket-fantasy`, `cricket-social`, `cricket-mobile` never see `BallEvent`. They still pay, post, and render a wicket if scoring counted one.
 
 This repo has **no scoring logic**. A green test suite here does not mean the scorecard or the broadcast UI is correct.
 
@@ -16,7 +17,7 @@ This repo has **no scoring logic**. A green test suite here does not mean the sc
 
 ## Trap branch
 
-`trap/default-confirm-wickets` — adds `default: true` on `umpire_confirmed` so omitted fields validate. Protocol tests still pass. Scoring still compiles. Broadcast then plays wicket animations for unconfirmed LBWs.
+`trap/default-confirm-wickets` — adds `default: true` on `umpire_confirmed` so omitted fields validate. Protocol tests still pass. Scoring still compiles. Three hops later fantasy pays 20 points, social posts `WICKET`, and mobile shows a wicket banner.
 
 ## Develop
 
@@ -25,4 +26,4 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest
 ```
-trap/default-confirm-wickets
+
