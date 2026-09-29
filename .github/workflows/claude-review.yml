@@ -65,7 +65,10 @@ jobs:
           # track_progress puts the result on the PR as a comment. Without it the
           # review only lands in the workflow log.
           track_progress: true
-          claude_args: "--max-turns 60 --allowedTools Read,Grep,Glob,Bash"
+          # No shell: the siblings are cloned above, and Read/Grep/Glob search them.
+          # An unrestricted Bash could curl or git-clone the public harness repo,
+          # which holds every trap. The action's default web tools stay disallowed.
+          claude_args: "--max-turns 60 --allowedTools Read,Grep,Glob,LS"
           prompt: |
             Review this pull request for defects that would reach production.
 
