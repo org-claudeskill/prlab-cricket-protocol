@@ -47,22 +47,31 @@ jobs:
             name="prlab-cricket-${r}"
             [ "$name" = "$REPO" ] && continue
             url="https://github.com/${OWNER}/${name}.git"
-            # The token goes in a per-command header, never in the URL: a URL
-            # credential is saved in .estate/*/.git/config, where Claude can read
-            # it and a prompt in the PR could get it posted in the review.
-            auth=()
-            if [ -n "${ESTATE_TOKEN:-}" ]; then
-              basic=$(printf 'x-access-token:%s' "$ESTATE_TOKEN" | base64 | tr -d '\n')
-              auth=(-c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}")
-            fi
-            if git "${auth[@]}" clone --depth 1 --quiet "$url" ".estate/${name}" 2>/dev/null; then
+            # actions/checkout left an Authorization extraheader (this repo's job
+            # token) in git config. An empty value clears it, so the clone does not
+            # send two credentials. Public repos need none; ESTATE_TOKEN is only a
+            # fallback, sent as a per-command header and never put in the URL: a URL
+            # credential is saved in .estate/*/.git/config, where Claude can read it.
+            clear=(-c "http.https://github.com/.extraheader=")
+            if git "${clear[@]}" clone --depth 1 --quiet "$url" ".estate/${name}" 2>/dev/null; then
               echo "  cloned ${name}"
+            elif [ -n "${ESTATE_TOKEN:-}" ] && git "${clear[@]}" \
+                -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$ESTATE_TOKEN" | base64 | tr -d '\n')" \
+                clone --depth 1 --quiet "$url" ".estate/${name}" 2>/dev/null; then
+              echo "  cloned ${name} (with ESTATE_TOKEN)"
             else
               echo "  SKIP ${name} (clone failed — is ${OWNER}/${name} readable?)"
             fi
           done
           if grep -rqs "${ESTATE_TOKEN:-no-token-set}" .estate/*/.git/config; then
             echo "ESTATE_TOKEN found in a clone's .git/config; stopping before Claude runs" >&2
+            exit 1
+          fi
+          # A review without the siblings is the out-of-the-box variant under the
+          # wrong name. Fail the job instead of letting it review blind.
+          cloned=$(find .estate -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+          if [ "$cloned" -lt 10 ]; then
+            echo "only ${cloned}/10 sibling repos cloned; refusing to review without the estate" >&2
             exit 1
           fi
           echo "estate contents:"; ls -1 .estate || echo "  (empty)"
